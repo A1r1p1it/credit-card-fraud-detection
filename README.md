@@ -36,17 +36,18 @@ Detect credit card fraud with extreme class imbalance (0.17% fraud rate). Accura
 - Only 9% false alarm rate - optimal for production
 
 ### 3. Evaluation Strategy
+- Evaluated Precision-Recall Curve and computed PR-AUC to assess performance under extreme class imbalance
 - Used precision, recall, F1-score (not accuracy)
 - Confusion matrix to analyze false positives vs false negatives
 - Compared against baseline (model predicting all non-fraud gets 99.8% accuracy)
 
 ## Results
 
-| Model | Precision | Recall | F1-Score | Trade-off |
-|-------|-----------|--------|----------|-----------|
-| Logistic Regression | 0.06 | 0.92 | 0.11 | Catches 92% fraud but 94% false alarms |
-| Random Forest | 0.36 | 0.89 | 0.51 | Better balance, still 64% false alarms |
-| **XGBoost** | **0.91** | **0.84** | **0.87** | **Only 9% false alarms, catches 84% fraud** |
+| Model | Precision | Recall | F1-Score | PR-AUC | Trade-off |
+|-------|-----------|--------|----------|--------|-----------|
+| Logistic Regression | 0.06 | 0.92 | 0.11 | 0.764 | Catches 92% fraud but 94% false alarms |
+| Random Forest | 0.36 | 0.89 | 0.51 | 0.659 | Better balance, still 64% false alarms |
+| XGBoost | 0.91 | 0.84 | 0.87 | 0.878 | Only 9% false alarms, catches 84% fraud |
 
 **Key Insight**: XGBoost achieved best precision-recall balance, making it production-ready with minimal false positives while still detecting majority of fraud.
 
