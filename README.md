@@ -49,7 +49,7 @@ Detect credit card fraud with extreme class imbalance (0.17% fraud rate). Accura
 | Random Forest | 0.36 | 0.89 | 0.51 | 0.659 | Better balance, still 64% false alarms |
 | XGBoost | 0.91 | 0.84 | 0.87 | 0.878 | Only 9% false alarms, catches 84% fraud |
 
-**Key Insight**: XGBoost achieved best precision-recall balance, making it production-ready with minimal false positives while still detecting majority of fraud.
+**Key Insight**: XGBoost achieved best precision-recall balance, making it production-ready with minimal false positives while still detecting majority of fraud. XGBoost also achieved the highest PR-AUC (0.878), confirming superior performance across probability thresholds in highly imbalanced settings.
 
 ## Feature Importance
 Top 5 features identified by Random Forest and XGBoost:
