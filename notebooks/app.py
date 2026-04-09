@@ -32,7 +32,7 @@ if st.button("🔍 Predict", use_container_width=True):
     payload.update(v_values)
 
     try:
-        response = requests.post("http://127.0.0.1:8000/predict", json=payload)
+        response = requests.post("https://arpitkr-fraud-detection-api.hf.space/predict", json=payload)
         result = response.json()
 
         st.subheader("Prediction Result")
