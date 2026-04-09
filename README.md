@@ -1,6 +1,5 @@
 **Live Demo**: https://arpitkr-fraud-detection-ui.hf.space  
 **Live API**: https://arpitkr-fraud-detection-api.hf.space/docs  
-**Swagger Docs**: https://arpitkr-fraud-detection-api.hf.space/docs  
 
 # Credit Card Fraud Detection
 
