@@ -1,3 +1,6 @@
+**Live API**: https://arpitkr-fraud-detection-api.hf.space  
+**Swagger Docs**: https://arpitkr-fraud-detection-api.hf.space/docs  
+
 # Credit Card Fraud Detection
 
 Binary classification system to detect fraudulent credit card transactions in highly imbalanced dataset.
