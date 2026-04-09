@@ -1,4 +1,5 @@
-**Live API**: https://arpitkr-fraud-detection-api.hf.space  
+**Live Demo**: https://arpitkr-fraud-detection-ui.hf.space  
+**Live API**: https://arpitkr-fraud-detection-api.hf.space/docs  
 **Swagger Docs**: https://arpitkr-fraud-detection-api.hf.space/docs  
 
 # Credit Card Fraud Detection
@@ -65,6 +66,10 @@ Top 5 features identified by Random Forest and XGBoost:
 ## Technologies Used
 - Python, Pandas, NumPy
 - Scikit-learn, XGBoost
+- FastAPI, Pydantic, Uvicorn (REST API)
+- Streamlit (Web UI)
+- Docker (containerization)
+- HuggingFace Spaces (cloud deployment)
 - Jupyter Notebook
 
 ## Key Learnings
@@ -73,3 +78,9 @@ Top 5 features identified by Random Forest and XGBoost:
 - Precision-recall trade-off is critical in fraud detection
 - XGBoost with `scale_pos_weight` tuning outperforms simpler models
 - False positives damage customer trust, so high precision matters
+
+## Deployment
+- **Backend**: FastAPI REST API serving real-time predictions
+- **Frontend**: Streamlit web app for interactive testing
+- **Containerized** with Docker and deployed on HuggingFace Spaces
+- API accepts 30 transaction features, returns fraud prediction + probability + risk level (LOW/MEDIUM/HIGH)
