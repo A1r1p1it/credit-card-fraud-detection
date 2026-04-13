@@ -62,9 +62,17 @@ Top 5 features identified by Random Forest and XGBoost:
 4. V17 (~10%)
 5. V4 (~9%)
 
+## SQL Analysis
+Loaded data into SQLite to perform business-level analysis:
+- **Overall fraud rate**: 0.17% (492 out of 284,807 transactions)
+- **High-value transactions** (>$200) have 2x higher fraud rate (0.29%)
+- **Fraudulent transactions** average higher amounts ($122 vs $88 for normal)
+- **Peak fraud hours**: 2AM–3AM with 1.33% fraud rate — late night spike
+
 ## Technologies Used
 - Python, Pandas, NumPy
 - Scikit-learn, XGBoost
+- **SQL** (SQLite — business analysis queries)
 - FastAPI, Pydantic, Uvicorn (REST API)
 - Streamlit (Web UI)
 - Docker (containerization)
