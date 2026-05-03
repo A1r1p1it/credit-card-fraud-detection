@@ -2,7 +2,7 @@
 title: Fraud Detection Api
 emoji: 🔍
 colorFrom: red
-colorTo: orange
+colorTo: red
 sdk: docker
 pinned: false
 ---
