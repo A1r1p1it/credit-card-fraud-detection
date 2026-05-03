@@ -4,9 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
 def explain_fraud(features: dict, probability: float) -> str:
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     prompt = f"""You are a fraud detection expert. A credit card transaction was flagged as FRAUDULENT with {probability:.1%} confidence.
 
 Transaction details:
