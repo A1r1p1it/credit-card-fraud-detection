@@ -1,3 +1,12 @@
+---
+title: Fraud Detection Api
+emoji: 🔍
+colorFrom: red
+colorTo: orange
+sdk: docker
+pinned: false
+---
+
 **Live Demo**: https://arpitkr-fraud-detection-ui.hf.space  
 **Live API**: https://arpitkr-fraud-detection-api.hf.space/docs  
 
