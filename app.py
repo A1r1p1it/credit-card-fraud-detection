@@ -1,9 +1,10 @@
 from dotenv import load_dotenv
-load_dotenv()  # Must be called BEFORE os.getenv()
+load_dotenv()
 
 import streamlit as st
 import requests
 from groq import Groq
+from src.rag_engine import rag_engine
 import os
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -23,7 +24,7 @@ sample_fraud = {
     "V28": -0.1433, "Amount": 149.62
 }
 
-tab1, tab2 = st.tabs(["Fraud Detector", "AI Chat"])
+tab1, tab2, tab3 = st.tabs(["Fraud Detector", "AI Chat", "Knowledge Base"])
 
 with tab1:
     st.markdown("Enter transaction details below to check if it's fraudulent.")
@@ -77,7 +78,36 @@ with tab1:
             with col3:
                 st.metric("Risk Level", result["risk_level"])
 
-            if result.get("explanation"):
+            # ── RAG Explanation ──────────────────────────────────────────────
+            if result["is_fraud"]:
+                st.divider()
+                st.markdown("### 🔍 RAG Fraud Analysis")
+
+                with st.spinner("Retrieving relevant fraud knowledge..."):
+                    query = (
+                        f"V14={payload['V14']:.2f} V10={payload['V10']:.2f} "
+                        f"V12={payload['V12']:.2f} amount={payload['Amount']} fraud detected"
+                    )
+                    retrieved_docs = rag_engine.retrieve(query, top_k=3)
+
+                st.markdown("**📚 Retrieved Knowledge Chunks**")
+                for i, doc in enumerate(retrieved_docs, 1):
+                    with st.expander(f"{i}. [{doc['category']}] {doc['title']} — relevance: {doc['score']:.3f}"):
+                        st.write(doc["content"])
+
+                with st.spinner("Generating grounded explanation..."):
+                    rag_prompt = rag_engine.build_rag_prompt(payload, result["fraud_probability"], retrieved_docs)
+                    rag_response = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": rag_prompt}],
+                        max_tokens=200
+                    )
+                    rag_explanation = rag_response.choices[0].message.content
+
+                st.info(rag_explanation)
+                st.caption("Powered by RAG (sentence-transformers + FAISS cosine similarity) + LLaMA 3.3 via Groq")
+
+            elif result.get("explanation"):
                 st.divider()
                 st.markdown("### AI Fraud Analysis")
                 st.info(result["explanation"])
@@ -122,13 +152,18 @@ Latest prediction context:
     user_input = st.chat_input("Ask me anything about fraud detection...")
 
     if user_input:
+        # RAG-enhanced chat
+        chat_docs = rag_engine.retrieve(user_input, top_k=2)
+        rag_context = "\n\n".join([f"[{d['category']}] {d['title']}: {d['content']}" for d in chat_docs])
+        enhanced_system = system_prompt + f"\n\nRelevant knowledge:\n{rag_context}"
+
         st.session_state.chat_history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.write(user_input)
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                messages = [{"role": "system", "content": system_prompt}]
+                messages = [{"role": "system", "content": enhanced_system}]
                 messages += st.session_state.chat_history
 
                 response = client.chat.completions.create(
@@ -144,3 +179,21 @@ Latest prediction context:
     if st.button("Clear Chat"):
         st.session_state.chat_history = []
         st.rerun()
+
+with tab3:
+    st.markdown("### 📚 Fraud Knowledge Base")
+    st.caption(f"{len(rag_engine.documents)} documents across 6 categories")
+
+    from src.knowledge_base import FRAUD_KNOWLEDGE_BASE
+    from collections import defaultdict
+
+    by_category = defaultdict(list)
+    for doc in FRAUD_KNOWLEDGE_BASE:
+        by_category[doc["category"]].append(doc)
+
+    for category, docs in by_category.items():
+        st.markdown(f"#### {category} ({len(docs)} docs)")
+        for doc in docs:
+            with st.expander(doc["title"]):
+                st.write(doc["content"])
+        st.divider()
