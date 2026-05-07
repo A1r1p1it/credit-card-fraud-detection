@@ -1,3 +1,12 @@
+---
+title: Fraud Detection UI
+colorFrom: red
+colorTo: orange
+sdk: docker
+app_port: 8501
+pinned: false
+---
+
 # Credit Card Fraud Detection
 
 **Live Demo**: [Fraud Detection UI](https://arpitkr-fraud-detection-ui.hf.space)  
@@ -168,25 +177,29 @@ New UI features:
 ```bash
 credit-card-fraud-detection/
 │
-├── app.py
-├── main.py
-├── explainer.py
-├── Dockerfile
-├── requirements.txt
-├── Best_model.pkl
-├── Scaler.pkl
+├── data/
+│   ├── creditcard.csv
+│   └── fraud.db
+│
+├── notebooks/
+│   ├── fraud.ipynb
+│   └── README.md
 │
 ├── src/
 │   ├── __init__.py
-│   ├── explainer.py
 │   ├── knowledge_base.py
 │   └── rag_engine.py
 │
-├── data/
-│   └── creditcard.csv
-│
-├── notebooks/
-│   └── fraud.ipynb
+├── app.py
+├── Best_model.pkl
+├── Dockerfile
+├── Dockerfile.streamlit
+├── explainer.py
+├── main.py
+├── requirements.txt
+├── requirements_ui.txt
+├── Scaler.pkl
+├── .env
 │
 └── README.md
 ```
