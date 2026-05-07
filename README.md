@@ -1,5 +1,6 @@
 ---
 title: Fraud Detection UI
+emoji: 🔍
 colorFrom: red
 colorTo: red
 sdk: docker
