@@ -1,3 +1,4 @@
+<!--
 ---
 title: Fraud Detection UI
 emoji: 🔍
@@ -7,6 +8,7 @@ sdk: docker
 app_port: 8501
 pinned: false
 ---
+-->
 
 # Credit Card Fraud Detection
 
