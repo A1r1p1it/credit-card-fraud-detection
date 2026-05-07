@@ -78,7 +78,6 @@ with tab1:
             with col3:
                 st.metric("Risk Level", result["risk_level"])
 
-            # ── RAG Explanation ──────────────────────────────────────────────
             if result["is_fraud"]:
                 st.divider()
                 st.markdown("### 🔍 RAG Fraud Analysis")
@@ -90,7 +89,7 @@ with tab1:
                     )
                     retrieved_docs = rag_engine.retrieve(query, top_k=3)
 
-                st.markdown("**📚 Retrieved Knowledge Chunks**")
+                st.markdown("** Retrieved Knowledge Chunks**")
                 for i, doc in enumerate(retrieved_docs, 1):
                     with st.expander(f"{i}. [{doc['category']}] {doc['title']} — relevance: {doc['score']:.3f}"):
                         st.write(doc["content"])
@@ -120,7 +119,7 @@ with tab1:
             st.error(f"API Error: {e}. Make sure your FastAPI server is running!")
 
 with tab2:
-    st.markdown("### 💬 Ask the AI about fraud detection")
+    st.markdown("###  Ask the AI about fraud detection")
     st.caption("Ask anything about the prediction, features, or fraud detection in general.")
 
     if "chat_history" not in st.session_state:
@@ -152,7 +151,6 @@ Latest prediction context:
     user_input = st.chat_input("Ask me anything about fraud detection...")
 
     if user_input:
-        # RAG-enhanced chat
         chat_docs = rag_engine.retrieve(user_input, top_k=2)
         rag_context = "\n\n".join([f"[{d['category']}] {d['title']}: {d['content']}" for d in chat_docs])
         enhanced_system = system_prompt + f"\n\nRelevant knowledge:\n{rag_context}"
@@ -181,7 +179,7 @@ Latest prediction context:
         st.rerun()
 
 with tab3:
-    st.markdown("### 📚 Fraud Knowledge Base")
+    st.markdown("###  Fraud Knowledge Base")
     st.caption(f"{len(rag_engine.documents)} documents across 6 categories")
 
     from src.knowledge_base import FRAUD_KNOWLEDGE_BASE

@@ -1,8 +1,5 @@
-# src/knowledge_base.py
-
 FRAUD_KNOWLEDGE_BASE = [
 
-    # ── V-Feature Rules ──────────────────────────────────────────────────────
 
     {
         "id": "v14_rule",
@@ -82,7 +79,6 @@ FRAUD_KNOWLEDGE_BASE = [
         )
     },
 
-    # ── Fraud Pattern Descriptions ────────────────────────────────────────────
 
     {
         "id": "card_skimming",
@@ -156,7 +152,6 @@ FRAUD_KNOWLEDGE_BASE = [
         )
     },
 
-    # ── Dataset Statistics (from actual SQL analysis) ─────────────────────────
 
     {
         "id": "dataset_fraud_rate",
@@ -207,7 +202,6 @@ FRAUD_KNOWLEDGE_BASE = [
         )
     },
 
-    # ── Model & Evaluation Knowledge ──────────────────────────────────────────
 
     {
         "id": "xgboost_model",
@@ -259,7 +253,6 @@ FRAUD_KNOWLEDGE_BASE = [
         )
     },
 
-    # ── Risk Rules ────────────────────────────────────────────────────────────
 
     {
         "id": "high_risk_combo",
@@ -299,7 +292,6 @@ FRAUD_KNOWLEDGE_BASE = [
         )
     },
 
-    # ── Industry Context ──────────────────────────────────────────────────────
 
     {
         "id": "pci_dss",

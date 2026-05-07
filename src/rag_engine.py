@@ -1,5 +1,3 @@
-# src/rag_engine.py
-
 import numpy as np
 from src.knowledge_base import FRAUD_KNOWLEDGE_BASE
 
@@ -56,5 +54,4 @@ TRANSACTION:
 
 Using ONLY the retrieved knowledge above, explain in 2-3 sentences why this transaction is suspicious. Be specific about which features are abnormal and what fraud pattern they suggest."""
 
-# Singleton instance
 rag_engine = FraudRAGEngine()
