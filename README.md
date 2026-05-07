@@ -1,7 +1,7 @@
 ---
 title: Fraud Detection UI
 colorFrom: red
-colorTo: orange
+colorTo: red
 sdk: docker
 app_port: 8501
 pinned: false
