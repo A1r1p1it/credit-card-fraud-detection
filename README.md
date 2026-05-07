@@ -1,14 +1,11 @@
-<!--
 ---
 title: Fraud Detection UI
-emoji: 🔍
 colorFrom: red
 colorTo: red
 sdk: docker
 app_port: 8501
 pinned: false
 ---
--->
 
 # Credit Card Fraud Detection
 
