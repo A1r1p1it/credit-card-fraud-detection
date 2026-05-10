@@ -3,6 +3,7 @@ load_dotenv()
 
 import streamlit as st
 import requests
+import json
 from groq import Groq
 from src.rag_engine import rag_engine
 import os
@@ -24,7 +25,101 @@ sample_fraud = {
     "V28": -0.1433, "Amount": 149.62
 }
 
-tab1, tab2, tab3 = st.tabs(["Fraud Detector", "AI Chat", "Knowledge Base"])
+V_DEFAULTS = {f"V{i}": 0.0 for i in range(1, 29)}
+
+
+def run_prediction(payload):
+    try:
+        response = requests.post("https://arpitkr-fraud-detection-api.hf.space/predict", json=payload)
+        result = response.json()
+
+        st.subheader("Prediction Result")
+
+        if result["is_fraud"]:
+            st.error("FRAUDULENT TRANSACTION DETECTED!")
+        else:
+            st.success("Legitimate Transaction")
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Fraud", "YES" if result["is_fraud"] else "NO")
+        with col2:
+            st.metric("Probability", f"{result['fraud_probability']*100:.1f}%")
+        with col3:
+            st.metric("Risk Level", result["risk_level"])
+        with col4:
+            st.metric("Action", result.get("suggested_action", "N/A"))
+
+        st.divider()
+        st.markdown("### 🤖 Agent Pipeline")
+        risk = result["risk_level"]
+        action = result.get("suggested_action", "N/A")
+        action_color = "🔴" if risk == "HIGH" else "🟡" if risk == "MEDIUM" else "🟢"
+        st.markdown(f"""
+| Step | Output |
+|------|--------|
+| 1️ Predict | Fraud: **{'YES' if result['is_fraud'] else 'NO'}** — {result['fraud_probability']*100:.1f}% probability |
+| 2️ Risk Level | {action_color} **{risk}** |
+| 3️ Suggested Action | **{action}** |
+""")
+
+        similar = result.get("similar_cases", [])
+        if similar:
+            st.markdown(f"### Similar Past Fraud Cases ({len(similar)} found)")
+            for i, c in enumerate(similar, 1):
+                st.markdown(
+                    f"**Case {i}** — Amount: `${c['amount']}` | "
+                    f"Probability: `{c['fraud_probability']*100:.1f}%` | "
+                    f"Risk: `{c['risk_level']}` | "
+                    f"Time: `{c['timestamp']}`"
+                )
+        else:
+            st.markdown("### Similar Past Fraud Cases")
+            st.caption("No similar past fraud cases found yet. Run more fraud predictions to build history.")
+
+        if result["is_fraud"]:
+            st.divider()
+            st.markdown("### RAG Fraud Analysis")
+
+            with st.spinner("Retrieving relevant fraud knowledge..."):
+                query = (
+                    f"V14={payload['V14']:.2f} V10={payload['V10']:.2f} "
+                    f"V12={payload['V12']:.2f} amount={payload['Amount']} fraud detected"
+                )
+                retrieved_docs = rag_engine.retrieve(query, top_k=3)
+
+            st.markdown("** Retrieved Knowledge Chunks**")
+            for i, doc in enumerate(retrieved_docs, 1):
+                with st.expander(f"{i}. [{doc['category']}] {doc['title']} — relevance: {doc['score']:.3f}"):
+                    st.write(doc["content"])
+
+            with st.spinner("Generating grounded explanation..."):
+                rag_prompt = rag_engine.build_rag_prompt(payload, result["fraud_probability"], retrieved_docs)
+                rag_response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "user", "content": rag_prompt}],
+                    max_tokens=200
+                )
+                rag_explanation = rag_response.choices[0].message.content
+
+            st.info(rag_explanation)
+            st.caption("Powered by RAG (sentence-transformers + FAISS cosine similarity) + LLaMA 3.3 via Groq")
+
+        elif result.get("explanation"):
+            st.divider()
+            st.markdown("### AI Fraud Analysis")
+            st.info(result["explanation"])
+            st.caption("Powered by LLaMA 3.3 via Groq")
+
+        st.session_state["last_result"] = result
+        st.session_state["last_payload"] = payload
+
+    except Exception as e:
+        st.error(f"API Error: {e}. Make sure your FastAPI server is running!")
+
+
+tab1, tab2, tab3, tab4 = st.tabs(["Fraud Detector", "Natural Language", "AI Chat", "Knowledge Base"])
+
 
 with tab1:
     st.markdown("Enter transaction details below to check if it's fraudulent.")
@@ -58,101 +153,121 @@ with tab1:
     if st.button("Predict", use_container_width=True):
         payload = {"Time": Time, "Amount": Amount}
         payload.update(v_values)
+        run_prediction(payload)
 
-        try:
-            response = requests.post("https://arpitkr-fraud-detection-api.hf.space/predict", json=payload)
-            result = response.json()
-
-            st.subheader("Prediction Result")
-
-            if result["is_fraud"]:
-                st.error("FRAUDULENT TRANSACTION DETECTED!")
-            else:
-                st.success("Legitimate Transaction")
-
-            # Metrics row
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Fraud", "YES" if result["is_fraud"] else "NO")
-            with col2:
-                st.metric("Probability", f"{result['fraud_probability']*100:.1f}%")
-            with col3:
-                st.metric("Risk Level", result["risk_level"])
-            with col4:
-                st.metric("Action", result.get("suggested_action", "N/A"))
-
-            # Agent Pipeline Output 
-            st.divider()
-            st.markdown("### 🤖 Agent Pipeline")
-
-            action = result.get("suggested_action", "N/A")
-            risk = result["risk_level"]
-            action_color = "🔴" if risk == "HIGH" else "🟡" if risk == "MEDIUM" else "🟢"
-            st.markdown(f"""
-| Step | Output |
-|------|--------|
-| 1️⃣ Predict | Fraud: **{'YES' if result['is_fraud'] else 'NO'}** — {result['fraud_probability']*100:.1f}% probability |
-| 2️⃣ Risk Level | {action_color} **{risk}** |
-| 4️⃣ Suggested Action | **{action}** |
-""")
-
-            # Similar Cases 
-            similar = result.get("similar_cases", [])
-            if similar:
-                st.markdown(f"### 🔍 Similar Past Fraud Cases ({len(similar)} found)")
-                for i, c in enumerate(similar, 1):
-                    st.markdown(
-                        f"**Case {i}** — Amount: `${c['amount']}` | "
-                        f"Probability: `{c['fraud_probability']*100:.1f}%` | "
-                        f"Risk: `{c['risk_level']}` | "
-                        f"Time: `{c['timestamp']}`"
-                    )
-            else:
-                st.markdown("### 🔍 Similar Past Fraud Cases")
-                st.caption("No similar past fraud cases found yet. Run more fraud predictions to build history.")
-
-            if result["is_fraud"]:
-                st.divider()
-                st.markdown("### RAG Fraud Analysis")
-
-                with st.spinner("Retrieving relevant fraud knowledge..."):
-                    query = (
-                        f"V14={payload['V14']:.2f} V10={payload['V10']:.2f} "
-                        f"V12={payload['V12']:.2f} amount={payload['Amount']} fraud detected"
-                    )
-                    retrieved_docs = rag_engine.retrieve(query, top_k=3)
-
-                st.markdown("**📄 Retrieved Knowledge Chunks**")
-                for i, doc in enumerate(retrieved_docs, 1):
-                    with st.expander(f"{i}. [{doc['category']}] {doc['title']} — relevance: {doc['score']:.3f}"):
-                        st.write(doc["content"])
-
-                with st.spinner("Generating grounded explanation..."):
-                    rag_prompt = rag_engine.build_rag_prompt(payload, result["fraud_probability"], retrieved_docs)
-                    rag_response = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[{"role": "user", "content": rag_prompt}],
-                        max_tokens=200
-                    )
-                    rag_explanation = rag_response.choices[0].message.content
-
-                st.info(rag_explanation)
-                st.caption("Powered by RAG (sentence-transformers + FAISS cosine similarity) + LLaMA 3.3 via Groq")
-
-            elif result.get("explanation"):
-                st.divider()
-                st.markdown("### AI Fraud Analysis")
-                st.info(result["explanation"])
-                st.caption("Powered by LLaMA 3.3 via Groq")
-
-            st.session_state["last_result"] = result
-            st.session_state["last_payload"] = payload
-
-        except Exception as e:
-            st.error(f"API Error: {e}. Make sure your FastAPI server is running!")
 
 with tab2:
-    st.markdown("### Ask the AI about fraud detection")
+    st.markdown("### 🗣️ Describe a Transaction in Plain English")
+    st.caption("Describe the transaction naturally — the AI will extract features and run fraud detection.")
+
+    st.markdown("""
+**Try these examples:**
+- `Transaction of $500 at 2AM from an unknown location`
+- `Small $12 purchase at a local coffee shop during business hours`
+- `$3000 international wire transfer at midnight on a new device`
+- `Contactless $80 tap payment at grocery store at 6PM`
+""")
+
+    nl_input = st.text_area(
+        "Describe the transaction",
+        placeholder="e.g. Transaction of $500 at 2AM from an unknown location using a new device...",
+        height=100
+    )
+
+    if st.button("Analyze Transaction", use_container_width=True):
+        if not nl_input.strip():
+            st.warning("Please describe a transaction first.")
+        else:
+            with st.spinner("Parsing transaction with AI..."):
+                parse_prompt = f"""You are a credit card fraud detection feature extractor.
+
+A user described a transaction in plain English. Extract structured features for a fraud detection model.
+
+The model uses these key PCA features. Estimate values based on the transaction description:
+- V14: Most important fraud signal. Normal: near 0. Suspicious: -2 to -5
+- V10: Second most important. Suspicious: -2 to -4
+- V12: Third most important. Suspicious: -2 to -4
+- V17: Fourth. Suspicious: -2 to -3
+- V4: High positive (2 to 4) = suspicious geographic anomaly
+- All other V features: set to 0.0
+
+Risk factors that push V14/V10/V12/V17 negative and V4 positive:
+- Late night (12AM-4AM): high risk
+- Unknown/foreign location: high risk
+- Large amount (>$500): moderate risk
+- New device or card: high risk
+- International transaction: high risk
+- Online/card-not-present: moderate risk
+- Normal business hours + known location: low risk
+- Small everyday purchase: low risk
+
+Transaction: "{nl_input}"
+
+Respond ONLY with valid JSON, no explanation:
+{{
+  "Amount": <number>,
+  "Time": <seconds from midnight, e.g. 2AM = 7200>,
+  "V4": <number>,
+  "V10": <number>,
+  "V12": <number>,
+  "V14": <number>,
+  "V17": <number>,
+  "reasoning": "<one sentence explaining your risk assessment>"
+}}"""
+
+                parse_response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "user", "content": parse_prompt}],
+                    max_tokens=300
+                )
+                raw = parse_response.choices[0].message.content.strip()
+
+            try:
+                start = raw.find("{")
+                end = raw.rfind("}") + 1
+                parsed = json.loads(raw[start:end])
+                reasoning = parsed.pop("reasoning", "")
+
+                # Build full payload, start with neutral defaults, override key features
+                payload = {**V_DEFAULTS}
+                payload["Time"] = float(parsed.get("Time", 0))
+                payload["Amount"] = float(parsed.get("Amount", 0))
+                for key in ["V4", "V10", "V12", "V14", "V17"]:
+                    if key in parsed:
+                        payload[key] = float(parsed[key])
+
+                # Show extracted features
+                st.markdown("### Extracted Features")
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.metric("Amount", f"${payload['Amount']:.2f}")
+                with c2:
+                    h = int(payload['Time'] // 3600)
+                    st.metric("Time", f"{h:02d}:00")
+                with c3:
+                    st.metric("V14 (key signal)", f"{payload['V14']:.2f}")
+
+                c4, c5, c6 = st.columns(3)
+                with c4:
+                    st.metric("V10", f"{payload['V10']:.2f}")
+                with c5:
+                    st.metric("V12", f"{payload['V12']:.2f}")
+                with c6:
+                    st.metric("V4", f"{payload['V4']:.2f}")
+
+                if reasoning:
+                    st.info(f" **AI Reasoning:** {reasoning}")
+
+                st.divider()
+                run_prediction(payload)
+
+            except Exception as e:
+                st.error(f"Failed to parse AI response: {e}")
+                st.code(raw)
+
+
+with tab3:
+    st.markdown("###  Ask the AI about fraud detection")
     st.caption("Ask anything about the prediction, features, or fraud detection in general.")
 
     if "chat_history" not in st.session_state:
@@ -197,7 +312,6 @@ Latest prediction context:
             with st.spinner("Thinking..."):
                 messages = [{"role": "system", "content": enhanced_system}]
                 messages += st.session_state.chat_history
-
                 response = client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=messages,
@@ -212,7 +326,8 @@ Latest prediction context:
         st.session_state.chat_history = []
         st.rerun()
 
-with tab3:
+
+with tab4:
     st.markdown("### Fraud Knowledge Base")
     st.caption(f"{len(rag_engine.documents)} documents across 6 categories")
 
