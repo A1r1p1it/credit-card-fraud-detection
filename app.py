@@ -70,17 +70,50 @@ with tab1:
             else:
                 st.success("Legitimate Transaction")
 
-            col1, col2, col3 = st.columns(3)
+            # Metrics row
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("Fraud", "YES" if result["is_fraud"] else "NO")
             with col2:
                 st.metric("Probability", f"{result['fraud_probability']*100:.1f}%")
             with col3:
                 st.metric("Risk Level", result["risk_level"])
+            with col4:
+                st.metric("Action", result.get("suggested_action", "N/A"))
+
+            # Agent Pipeline Output 
+            st.divider()
+            st.markdown("### 🤖 Agent Pipeline")
+
+            action = result.get("suggested_action", "N/A")
+            risk = result["risk_level"]
+            action_color = "🔴" if risk == "HIGH" else "🟡" if risk == "MEDIUM" else "🟢"
+            st.markdown(f"""
+| Step | Output |
+|------|--------|
+| 1️⃣ Predict | Fraud: **{'YES' if result['is_fraud'] else 'NO'}** — {result['fraud_probability']*100:.1f}% probability |
+| 2️⃣ Risk Level | {action_color} **{risk}** |
+| 4️⃣ Suggested Action | **{action}** |
+""")
+
+            # Similar Cases 
+            similar = result.get("similar_cases", [])
+            if similar:
+                st.markdown(f"### 🔍 Similar Past Fraud Cases ({len(similar)} found)")
+                for i, c in enumerate(similar, 1):
+                    st.markdown(
+                        f"**Case {i}** — Amount: `${c['amount']}` | "
+                        f"Probability: `{c['fraud_probability']*100:.1f}%` | "
+                        f"Risk: `{c['risk_level']}` | "
+                        f"Time: `{c['timestamp']}`"
+                    )
+            else:
+                st.markdown("### 🔍 Similar Past Fraud Cases")
+                st.caption("No similar past fraud cases found yet. Run more fraud predictions to build history.")
 
             if result["is_fraud"]:
                 st.divider()
-                st.markdown("###  RAG Fraud Analysis")
+                st.markdown("### RAG Fraud Analysis")
 
                 with st.spinner("Retrieving relevant fraud knowledge..."):
                     query = (
@@ -89,7 +122,7 @@ with tab1:
                     )
                     retrieved_docs = rag_engine.retrieve(query, top_k=3)
 
-                st.markdown("** Retrieved Knowledge Chunks**")
+                st.markdown("**📄 Retrieved Knowledge Chunks**")
                 for i, doc in enumerate(retrieved_docs, 1):
                     with st.expander(f"{i}. [{doc['category']}] {doc['title']} — relevance: {doc['score']:.3f}"):
                         st.write(doc["content"])
@@ -119,7 +152,7 @@ with tab1:
             st.error(f"API Error: {e}. Make sure your FastAPI server is running!")
 
 with tab2:
-    st.markdown("###  Ask the AI about fraud detection")
+    st.markdown("### Ask the AI about fraud detection")
     st.caption("Ask anything about the prediction, features, or fraud detection in general.")
 
     if "chat_history" not in st.session_state:
@@ -140,6 +173,7 @@ Latest prediction context:
 - Fraud detected: {r['is_fraud']}
 - Probability: {r['fraud_probability']*100:.1f}%
 - Risk level: {r['risk_level']}
+- Suggested action: {r.get('suggested_action', 'N/A')}
 - Amount: ${p['Amount']}
 - Key features: V14={p['V14']:.4f}, V10={p['V10']:.4f}, V4={p['V4']:.4f}, V12={p['V12']:.4f}
 - AI explanation: {r.get('explanation', 'N/A')}"""
@@ -179,7 +213,7 @@ Latest prediction context:
         st.rerun()
 
 with tab3:
-    st.markdown("###  Fraud Knowledge Base")
+    st.markdown("### Fraud Knowledge Base")
     st.caption(f"{len(rag_engine.documents)} documents across 6 categories")
 
     from src.knowledge_base import FRAUD_KNOWLEDGE_BASE
