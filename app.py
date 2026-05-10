@@ -80,7 +80,7 @@ with tab1:
 
             if result["is_fraud"]:
                 st.divider()
-                st.markdown("### 🔍 RAG Fraud Analysis")
+                st.markdown("###  RAG Fraud Analysis")
 
                 with st.spinner("Retrieving relevant fraud knowledge..."):
                     query = (
