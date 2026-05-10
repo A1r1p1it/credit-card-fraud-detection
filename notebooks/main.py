@@ -2,10 +2,11 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 import numpy as np
-from dotenv import load_dotenv  
-from src.explainer import explain_fraud 
+import sqlite3
+from dotenv import load_dotenv
+from src.explainer import explain_fraud
 
-load_dotenv()  
+load_dotenv()
 
 app = FastAPI(title="Fraud Detection API")
 
@@ -46,9 +47,45 @@ class Transaction(BaseModel):
     Amount: float
 
 
+def get_suggested_action(risk_level: str, is_fraud: bool) -> str:
+    if is_fraud or risk_level == "HIGH":
+        return "Flag for manual review"
+    elif risk_level == "MEDIUM":
+        return "Monitor transaction closely"
+    else:
+        return "Approve transaction"
+
+
+def get_similar_cases(prob: float, n: int = 3) -> list:
+    try:
+        conn = sqlite3.connect("data/fraud.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT amount, fraud_probability, risk_level, timestamp
+            FROM predictions
+            WHERE is_fraud = 1
+            ORDER BY ABS(fraud_probability - ?) ASC
+            LIMIT ?
+        """, (prob, n))
+        rows = cursor.fetchall()
+        conn.close()
+        return [
+            {
+                "amount": r[0],
+                "fraud_probability": r[1],
+                "risk_level": r[2],
+                "timestamp": r[3]
+            }
+            for r in rows
+        ]
+    except Exception:
+        return []
+
+
 @app.get("/")
 def home():
     return {"message": "API is running"}
+
 
 @app.get("/health")
 def health():
@@ -71,13 +108,19 @@ def predict(txn: Transaction):
 
     risk_level = "HIGH" if probability > 0.7 else "MEDIUM" if probability > 0.3 else "LOW"
 
+    similar_cases = get_similar_cases(float(probability))
+
     explanation = None
     if bool(prediction):
         explanation = explain_fraud(txn.dict(), float(probability))
+
+    suggested_action = get_suggested_action(risk_level, bool(prediction))
 
     return {
         "is_fraud": bool(prediction),
         "fraud_probability": round(float(probability), 4),
         "risk_level": risk_level,
-        "explanation": explanation 
+        "explanation": explanation,
+        "similar_cases": similar_cases,
+        "suggested_action": suggested_action
     }
