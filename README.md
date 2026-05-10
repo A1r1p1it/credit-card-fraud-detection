@@ -12,11 +12,11 @@ pinned: false
 **Live Demo**: [Fraud Detection UI](https://arpitkr-fraud-detection-ui.hf.space)  
 **Live API**: [FastAPI Docs](https://arpitkr-fraud-detection-api.hf.space/docs)
 
-Binary classification system to detect fraudulent credit card transactions in a highly imbalanced dataset, with an interactive Streamlit UI, FastAPI backend, and a RAG-powered fraud explanation layer.
+Binary classification system to detect fraudulent credit card transactions in a highly imbalanced dataset, with an interactive Streamlit UI, FastAPI backend, RAG-powered fraud explanation layer, and an **Agent Pipeline** with automated risk assessment and similar case retrieval.
 
 ## Problem Statement
 
-Credit card fraud detection is a classic **imbalanced classification** problem. In this dataset, only 0.17% of transactions are fraudulent, which means a naive model that predicts every transaction as non-fraud can still achieve about 99.8% accuracy while catching no actual fraud.  
+Credit card fraud detection is a classic **imbalanced classification** problem. In this dataset, only 0.17% of transactions are fraudulent, which means a naive model that predicts every transaction as non-fraud can still achieve about 99.8% accuracy while catching no actual fraud.
 
 Because of this, accuracy is not a meaningful metric here. The goal is to maximize fraud detection while minimizing false alarms that would hurt customer trust and operations.
 
@@ -114,17 +114,25 @@ When a transaction is predicted as fraud, the system generates a human-readable 
 
 ### 2. AI Chat Interface
 Users can ask follow-up questions such as:
-- “Why was this transaction flagged?”
-- “What makes V14 suspicious?”
-- “What fraud pattern does this look like?”
-- “Why is accuracy misleading here?”
+- "Why was this transaction flagged?"
+- "What makes V14 suspicious?"
+- "What fraud pattern does this look like?"
+- "Why is accuracy misleading here?"
 
 ### 3. RAG-Based Fraud Knowledge Layer
-The app now includes a Retrieval-Augmented Generation pipeline so explanations are grounded in a curated fraud knowledge base instead of relying only on a direct LLM response.
+The app includes a Retrieval-Augmented Generation pipeline so explanations are grounded in a curated fraud knowledge base instead of relying only on a direct LLM response.
+
+### 4. Agent Pipeline (New)
+Every prediction now runs through a multi-step agent pipeline:
+
+| Step | Description |
+|------|-------------|
+| 1️⃣ Predict | XGBoost model predicts fraud probability |
+| 2️⃣ Risk Level | Classified as HIGH / MEDIUM / LOW based on probability thresholds |
+| 3️⃣ Suggested Action | Automated recommendation (e.g. "Flag for manual review", "Block transaction") |
+| 4️⃣ Similar Cases | Retrieves past fraud cases from SQLite DB with matching risk profiles |
 
 ## RAG Upgrade
-
-This project was extended with a domain-specific **RAG system** to make fraud explanations more reliable, interpretable, and useful.
 
 ### Phase 1 — Build the Knowledge Base
 
@@ -143,14 +151,10 @@ Created `src/knowledge_base.py` with curated fraud-detection documents across mu
   - Synthetic identity fraud
 
 - **Dataset-specific statistical context**  
-  Such as:
-  - Fraud rate
-  - Peak fraud hours
-  - Amount-based risk patterns
-  - High-value transaction behavior
+  Such as fraud rate, peak fraud hours, amount-based risk patterns
 
 - **General domain knowledge**  
-  Such as fraud detection trade-offs, model interpretation context, and operational risk signals
+  Fraud detection trade-offs, model interpretation context, and operational risk signals
 
 ### Phase 2 — Build the RAG Engine
 
@@ -164,11 +168,14 @@ Pipeline:
 
 ### Phase 3 — Update `app.py`
 
-The app was upgraded from a direct LLM explanation flow to a RAG-enhanced pipeline.
+Upgraded from direct LLM explanation to a RAG-enhanced + Agent pipeline:
 
 New UI features:
+- 4-metric display: Fraud | Probability | Risk Level | Suggested Action
+- Agent Pipeline table showing all decision steps
 - Retrieved knowledge chunks shown in the interface
 - Grounded fraud explanation generated from retrieved context
+- Similar past fraud cases from persistent SQLite database
 - **Knowledge Base** tab to browse all available fraud documents
 - RAG-enhanced AI chat for fraud-related questions
 
@@ -183,7 +190,7 @@ credit-card-fraud-detection/
 │
 ├── notebooks/
 │   ├── fraud.ipynb
-│   └── README.md
+│   └── main.py
 │
 ├── src/
 │   ├── __init__.py
@@ -194,11 +201,8 @@ credit-card-fraud-detection/
 ├── Best_model.pkl
 ├── Dockerfile
 ├── Dockerfile.streamlit
-├── explainer.py
-├── main.py
 ├── requirements.txt
 ├── requirements_ui.txt
-├── Scaler.pkl
 ├── .env
 │
 └── README.md
@@ -224,14 +228,16 @@ credit-card-fraud-detection/
 
 ## Deployment
 
-- **Frontend**: Streamlit app deployed on Hugging Face Spaces
-- **Backend**: FastAPI REST API deployed separately
-- **Containerized** using Docker
+- **Frontend**: Streamlit app deployed on Hugging Face Spaces (`fraud-detection-ui`)
+- **Backend**: FastAPI REST API deployed separately (`fraud-detection-api`)
+- **Containerized** using Docker (separate Dockerfiles per space)
 - API returns:
-  - fraud prediction
-  - fraud probability
-  - risk level
-  - explanation / RAG-grounded explanation
+  - `is_fraud` — boolean
+  - `fraud_probability` — float
+  - `risk_level` — HIGH / MEDIUM / LOW
+  - `suggested_action` — automated recommendation string
+  - `similar_cases` — list of past fraud cases from SQLite
+  - `explanation` — RAG-grounded LLM explanation
 
 ## Key Learnings
 
@@ -240,7 +246,8 @@ credit-card-fraud-detection/
 - XGBoost outperformed simpler baselines after imbalance-aware tuning
 - High precision is critical because false positives damage user trust
 - RAG improves explanation quality by grounding responses in curated fraud knowledge
-- Retrieval-based context makes LLM outputs more transparent and easier to inspect
+- Agent pipelines add interpretability and automated decision support on top of ML predictions
+- Separate Docker deployments per space prevent CMD conflicts in shared repos
 
 ## Future Improvements
 
@@ -253,11 +260,11 @@ credit-card-fraud-detection/
 ## Demo Questions
 
 Try asking the app:
-- “Why is V14 such a strong fraud signal?”
-- “What does this transaction pattern suggest?”
-- “What is account takeover fraud?”
-- “Why is PR-AUC better than accuracy here?”
-- “What makes high-value transactions riskier?”
+- "Why is V14 such a strong fraud signal?"
+- "What does this transaction pattern suggest?"
+- "What is account takeover fraud?"
+- "Why is PR-AUC better than accuracy here?"
+- "What makes high-value transactions riskier?"
 
 ## Author
 
