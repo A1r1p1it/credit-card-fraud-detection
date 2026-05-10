@@ -127,10 +127,10 @@ Every prediction now runs through a multi-step agent pipeline:
 
 | Step | Description |
 |------|-------------|
-| 1️⃣ Predict | XGBoost model predicts fraud probability |
-| 2️⃣ Risk Level | Classified as HIGH / MEDIUM / LOW based on probability thresholds |
-| 3️⃣ Suggested Action | Automated recommendation (e.g. "Flag for manual review", "Block transaction") |
-| 4️⃣ Similar Cases | Retrieves past fraud cases from SQLite DB with matching risk profiles |
+| 1️ Predict | XGBoost model predicts fraud probability |
+| 2️ Risk Level | Classified as HIGH / MEDIUM / LOW based on probability thresholds |
+| 3️ Suggested Action | Automated recommendation (e.g. "Flag for manual review", "Block transaction") |
+| 4️ Similar Cases | Retrieves past fraud cases from SQLite DB with matching risk profiles |
 
 ## RAG Upgrade
 
