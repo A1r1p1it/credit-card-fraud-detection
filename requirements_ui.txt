@@ -1,0 +1,9 @@
+streamlit
+requests
+groq
+sentence-transformers
+torch
+torchvision
+scikit-learn
+numpy
+python-dotenv
