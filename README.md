@@ -1,8 +1,10 @@
 ---
 title: Fraud Detection UI
+emoji: 🔍
 colorFrom: red
 colorTo: red
 sdk: streamlit
+app_file: app.py
 pinned: false
 ---
 
@@ -124,6 +126,9 @@ The app includes a Retrieval-Augmented Generation pipeline so explanations are g
 ### 4. Agent Pipeline (New)
 Every prediction now runs through a multi-step agent pipeline:
 
+### 5. Natural Language Transaction Analysis
+Users can describe a transaction in plain English, and the app uses Groq-powered parsing to convert it into structured fraud features before running prediction.
+
 | Step | Description |
 |------|-------------|
 | 1️ Predict | XGBoost model predicts fraud probability |
@@ -229,7 +234,8 @@ credit-card-fraud-detection/
 
 - **Frontend**: Streamlit app deployed on Hugging Face Spaces (`fraud-detection-ui`)
 - **Backend**: FastAPI REST API deployed separately (`fraud-detection-api`)
-- **Containerized** using Docker (separate Dockerfiles per space)
+- **UI deployment**: Streamlit SDK with `app.py` as the entry point
+- **API deployment**: Docker-based FastAPI container
 - API returns:
   - `is_fraud` — boolean
   - `fraud_probability` — float
