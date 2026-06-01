@@ -14,7 +14,8 @@ pinned: false
 **Live API**: [FastAPI Docs](https://arpitkr-fraud-detection-api.hf.space/docs)
 
 > If GitHub does not render the notebook properly, open the nbviewer link above for a clean static view.
-**Notebook View**: [fraud_clean.ipynb on nbviewer](https://nbviewer.org/github/A1r1p1it/credit-card-fraud-detection/blob/main/notebooks/fraud_clean.ipynb)
+
+>**Notebook View**: [fraud_clean.ipynb on nbviewer](https://nbviewer.org/github/A1r1p1it/credit-card-fraud-detection/blob/main/notebooks/fraud_clean.ipynb)
 
 Binary classification system to detect fraudulent credit card transactions in a highly imbalanced dataset, with an interactive Streamlit UI, FastAPI backend, RAG-powered fraud explanation layer, and an **Agent Pipeline** with automated risk assessment and similar case retrieval.
 
