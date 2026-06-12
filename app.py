@@ -49,12 +49,16 @@ def safe_groq_completion(messages, max_tokens=200, temperature=0.3):
 def run_prediction(payload):
     try:
         response = requests.post(
-            "https://arpitkr-fraud-detection-api.hf.space/predict",
+            "https://fraud-api-kzt3.onrender.com/predict",
             json=payload,
             timeout=30
         )
         response.raise_for_status()
         result = response.json()
+
+        if "is_fraud" not in result:
+            st.error(f"API Error: {result}")
+            return
 
         st.subheader("Prediction Result")
 
