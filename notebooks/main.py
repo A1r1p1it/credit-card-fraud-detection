@@ -94,33 +94,50 @@ def health():
 
 @app.post("/predict")
 def predict(txn: Transaction):
-    features = np.array([[
-        txn.Time, txn.V1, txn.V2, txn.V3, txn.V4, txn.V5,
-        txn.V6, txn.V7, txn.V8, txn.V9, txn.V10, txn.V11,
-        txn.V12, txn.V13, txn.V14, txn.V15, txn.V16, txn.V17,
-        txn.V18, txn.V19, txn.V20, txn.V21, txn.V22, txn.V23,
-        txn.V24, txn.V25, txn.V26, txn.V27, txn.V28, txn.Amount
-    ]])
+    try:
+        features = np.array([[
+            txn.Time, txn.V1, txn.V2, txn.V3, txn.V4, txn.V5,
+            txn.V6, txn.V7, txn.V8, txn.V9, txn.V10, txn.V11,
+            txn.V12, txn.V13, txn.V14, txn.V15, txn.V16, txn.V17,
+            txn.V18, txn.V19, txn.V20, txn.V21, txn.V22, txn.V23,
+            txn.V24, txn.V25, txn.V26, txn.V27, txn.V28, txn.Amount
+        ]])
 
-    scaled = scaler.transform(features)
-    prediction = model.predict(scaled)[0]
-    probability = model.predict_proba(scaled)[0][1]
+        scaled = scaler.transform(features)
+        prediction = model.predict(scaled)[0]
+        probability = model.predict_proba(scaled)[0][1]
 
-    risk_level = "HIGH" if probability > 0.7 else "MEDIUM" if probability > 0.3 else "LOW"
+        risk_level = "HIGH" if probability > 0.7 else "MEDIUM" if probability > 0.3 else "LOW"
+        similar_cases = get_similar_cases(float(probability))
 
-    similar_cases = get_similar_cases(float(probability))
+        explanation = None
+        if bool(prediction):
+            try:
+                explanation = explain_fraud(txn.dict(), float(probability))
+            except Exception as e:
+                err = str(e).lower()
+                if "quota" in err or "rate limit" in err or "429" in err or "forbidden" in err:
+                    explanation = "Explanation unavailable right now because the LLM quota was exceeded. Please try again in a moment."
+                else:
+                    explanation = "Explanation temporarily unavailable, but the fraud prediction completed successfully."
 
-    explanation = None
-    if bool(prediction):
-        explanation = explain_fraud(txn.dict(), float(probability))
+        suggested_action = get_suggested_action(risk_level, bool(prediction))
 
-    suggested_action = get_suggested_action(risk_level, bool(prediction))
+        return {
+            "is_fraud": bool(prediction),
+            "fraud_probability": round(float(probability), 4),
+            "risk_level": risk_level,
+            "explanation": explanation,
+            "similar_cases": similar_cases,
+            "suggested_action": suggested_action
+        }
 
-    return {
-        "is_fraud": bool(prediction),
-        "fraud_probability": round(float(probability), 4),
-        "risk_level": risk_level,
-        "explanation": explanation,
-        "similar_cases": similar_cases,
-        "suggested_action": suggested_action
-    }
+    except Exception as e:
+        return {
+            "is_fraud": False,
+            "fraud_probability": 0.0,
+            "risk_level": "ERROR",
+            "explanation": f"Prediction failed: {str(e)}",
+            "similar_cases": [],
+            "suggested_action": "Unable to process transaction"
+        }

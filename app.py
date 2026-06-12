@@ -7,6 +7,8 @@ import json
 from groq import Groq
 from src.rag_engine import rag_engine
 import os
+from src.knowledge_base import FRAUD_KNOWLEDGE_BASE
+from collections import defaultdict
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -28,9 +30,30 @@ sample_fraud = {
 V_DEFAULTS = {f"V{i}": 0.0 for i in range(1, 29)}
 
 
+def safe_groq_completion(messages, max_tokens=200, temperature=0.3):
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+        return response.choices[0].message.content.strip(), None
+    except Exception as e:
+        err = str(e).lower()
+        if "quota" in err or "rate limit" in err or "429" in err or "forbidden" in err:
+            return None, "Groq quota exceeded. Please try again in a moment."
+        return None, f"LLM error: {str(e)}"
+
+
 def run_prediction(payload):
     try:
-        response = requests.post("https://arpitkr-fraud-detection-api.hf.space/predict", json=payload)
+        response = requests.post(
+            "https://arpitkr-fraud-detection-api.hf.space/predict",
+            json=payload,
+            timeout=30
+        )
+        response.raise_for_status()
         result = response.json()
 
         st.subheader("Prediction Result")
@@ -88,34 +111,38 @@ def run_prediction(payload):
                 )
                 retrieved_docs = rag_engine.retrieve(query, top_k=3)
 
-            st.markdown("** Retrieved Knowledge Chunks**")
+            st.markdown("**Retrieved Knowledge Chunks**")
             for i, doc in enumerate(retrieved_docs, 1):
                 with st.expander(f"{i}. [{doc['category']}] {doc['title']} — relevance: {doc['score']:.3f}"):
                     st.write(doc["content"])
 
             with st.spinner("Generating grounded explanation..."):
                 rag_prompt = rag_engine.build_rag_prompt(payload, result["fraud_probability"], retrieved_docs)
-                rag_response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+                rag_explanation, rag_error = safe_groq_completion(
                     messages=[{"role": "user", "content": rag_prompt}],
                     max_tokens=200
                 )
-                rag_explanation = rag_response.choices[0].message.content
 
-            st.info(rag_explanation)
-            st.caption("Powered by RAG (sentence-transformers + FAISS cosine similarity) + LLaMA 3.3 via Groq")
+            if rag_explanation:
+                st.info(rag_explanation)
+            else:
+                st.warning(rag_error or "Explanation unavailable right now — try again in a moment.")
+
+            st.caption("Powered by RAG (sentence-transformers + FAISS cosine similarity) + LLaMA 3.1 via Groq")
 
         elif result.get("explanation"):
             st.divider()
             st.markdown("### AI Fraud Analysis")
             st.info(result["explanation"])
-            st.caption("Powered by LLaMA 3.3 via Groq")
+            st.caption("Powered by LLaMA 3.1 via Groq")
 
         st.session_state["last_result"] = result
         st.session_state["last_payload"] = payload
 
+    except requests.exceptions.RequestException as e:
+        st.error(f"API request failed: {e}")
     except Exception as e:
-        st.error(f"API Error: {e}. Make sure your FastAPI server is running!")
+        st.error(f"Something went wrong: {e}")
 
 
 tab1, tab2, tab3, tab4 = st.tabs(["Fraud Detector", "Natural Language", "AI Chat", "Knowledge Base"])
@@ -215,59 +242,58 @@ Respond ONLY with valid JSON, no explanation:
   "reasoning": "<one sentence explaining your risk assessment>"
 }}"""
 
-                parse_response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+                raw, parse_error = safe_groq_completion(
                     messages=[{"role": "user", "content": parse_prompt}],
                     max_tokens=300
                 )
-                raw = parse_response.choices[0].message.content.strip()
 
-            try:
-                start = raw.find("{")
-                end = raw.rfind("}") + 1
-                parsed = json.loads(raw[start:end])
-                reasoning = parsed.pop("reasoning", "")
+            if not raw:
+                st.error(parse_error or "Could not parse transaction right now.")
+            else:
+                try:
+                    start = raw.find("{")
+                    end = raw.rfind("}") + 1
+                    parsed = json.loads(raw[start:end])
+                    reasoning = parsed.pop("reasoning", "")
 
-                # Build full payload, start with neutral defaults, override key features
-                payload = {**V_DEFAULTS}
-                payload["Time"] = float(parsed.get("Time", 0))
-                payload["Amount"] = float(parsed.get("Amount", 0))
-                for key in ["V4", "V10", "V12", "V14", "V17"]:
-                    if key in parsed:
-                        payload[key] = float(parsed[key])
+                    payload = {**V_DEFAULTS}
+                    payload["Time"] = float(parsed.get("Time", 0))
+                    payload["Amount"] = float(parsed.get("Amount", 0))
+                    for key in ["V4", "V10", "V12", "V14", "V17"]:
+                        if key in parsed:
+                            payload[key] = float(parsed[key])
 
-                # Show extracted features
-                st.markdown("### Extracted Features")
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    st.metric("Amount", f"${payload['Amount']:.2f}")
-                with c2:
-                    h = int(payload['Time'] // 3600)
-                    st.metric("Time", f"{h:02d}:00")
-                with c3:
-                    st.metric("V14 (key signal)", f"{payload['V14']:.2f}")
+                    st.markdown("### Extracted Features")
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.metric("Amount", f"${payload['Amount']:.2f}")
+                    with c2:
+                        h = int(payload['Time'] // 3600)
+                        st.metric("Time", f"{h:02d}:00")
+                    with c3:
+                        st.metric("V14 (key signal)", f"{payload['V14']:.2f}")
 
-                c4, c5, c6 = st.columns(3)
-                with c4:
-                    st.metric("V10", f"{payload['V10']:.2f}")
-                with c5:
-                    st.metric("V12", f"{payload['V12']:.2f}")
-                with c6:
-                    st.metric("V4", f"{payload['V4']:.2f}")
+                    c4, c5, c6 = st.columns(3)
+                    with c4:
+                        st.metric("V10", f"{payload['V10']:.2f}")
+                    with c5:
+                        st.metric("V12", f"{payload['V12']:.2f}")
+                    with c6:
+                        st.metric("V4", f"{payload['V4']:.2f}")
 
-                if reasoning:
-                    st.info(f" **AI Reasoning:** {reasoning}")
+                    if reasoning:
+                        st.info(f"**AI Reasoning:** {reasoning}")
 
-                st.divider()
-                run_prediction(payload)
+                    st.divider()
+                    run_prediction(payload)
 
-            except Exception as e:
-                st.error(f"Failed to parse AI response: {e}")
-                st.code(raw)
+                except Exception as e:
+                    st.error(f"Failed to parse AI response: {e}")
+                    st.code(raw)
 
 
 with tab3:
-    st.markdown("###  Ask the AI about fraud detection")
+    st.markdown("### Ask the AI about fraud detection")
     st.caption("Ask anything about the prediction, features, or fraud detection in general.")
 
     if "chat_history" not in st.session_state:
@@ -312,13 +338,16 @@ Latest prediction context:
             with st.spinner("Thinking..."):
                 messages = [{"role": "system", "content": enhanced_system}]
                 messages += st.session_state.chat_history
-                response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+                reply, chat_error = safe_groq_completion(
                     messages=messages,
-                    max_tokens=500
+                    max_tokens=300
                 )
-                reply = response.choices[0].message.content
-                st.write(reply)
+
+                if reply:
+                    st.write(reply)
+                else:
+                    reply = "AI chat is temporarily unavailable because the model quota was exceeded. Please try again shortly."
+                    st.warning(reply)
 
         st.session_state.chat_history.append({"role": "assistant", "content": reply})
 
@@ -330,9 +359,6 @@ Latest prediction context:
 with tab4:
     st.markdown("### Fraud Knowledge Base")
     st.caption(f"{len(rag_engine.documents)} documents across 6 categories")
-
-    from src.knowledge_base import FRAUD_KNOWLEDGE_BASE
-    from collections import defaultdict
 
     by_category = defaultdict(list)
     for doc in FRAUD_KNOWLEDGE_BASE:
