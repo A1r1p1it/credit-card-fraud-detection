@@ -11,7 +11,7 @@ pinned: false
 # Credit Card Fraud Detection
 
 **Live Demo**: [Fraud Detection UI](https://arpitkr-fraud-detection-ui.hf.space)  
-**Live API**: [FastAPI Docs](https://arpitkr-fraud-detection-api.hf.space/docs)
+**Live API**: [FastAPI Docs](https://fraud-api-kzt3.onrender.com/docs)
 
 > If GitHub does not render the notebook properly, open the nbviewer link below for a clean static view.
 
@@ -115,23 +115,53 @@ The dataset was also analyzed using SQLite for business and fraud-pattern insigh
 ## AI-Powered Features
 
 ### 1. LLM Fraud Explanation
-When a transaction is predicted as fraud, the system generates a human-readable explanation using **LLaMA 3.3 70B via Groq**.
+When a transaction is predicted as fraud, the system generates a human-readable explanation using **LLaMA 3.1 8B via Groq**.
 
-### 2. AI Chat Interface
-Users can ask follow-up questions such as:
+### 2. Context-Aware AI Chat
+
+The application includes a conversational AI assistant that helps users understand fraud predictions, fraud patterns, and machine learning concepts.
+
+Features include:
+
+- Access to the latest prediction context (fraud probability, risk level, key feature values, and explanations)
+- Retrieval-Augmented Generation (RAG) using the fraud knowledge base
+- Multi-turn conversations with session-based chat history
+- Grounded responses that combine model outputs with retrieved fraud knowledge
+
+Example questions:
+
 - "Why was this transaction flagged?"
 - "What makes V14 suspicious?"
-- "What fraud pattern does this look like?"
-- "Why is accuracy misleading here?"
+- "What fraud pattern does this transaction resemble?"
+- "Why is PR-AUC more useful than accuracy for fraud detection?"
 
 ### 3. RAG-Based Fraud Knowledge Layer
 The app includes a Retrieval-Augmented Generation pipeline so explanations are grounded in a curated fraud knowledge base instead of relying only on a direct LLM response.
 
-### 4. Agent Pipeline (New)
+### 4. Agent Pipeline
 Every prediction now runs through a multi-step agent pipeline:
 
 ### 5. Natural Language Transaction Analysis
-Users can describe a transaction in plain English, and the app uses Groq-powered parsing to convert it into structured fraud features before running prediction.
+
+Users can describe a transaction in plain English instead of manually entering model features.
+
+The system uses an LLM-powered feature extraction workflow to convert natural language descriptions into structured fraud signals before running the fraud detection pipeline.
+
+Workflow:
+
+Natural Language Description
+→ LLM Feature Extraction
+→ Structured Transaction Features
+→ XGBoost Prediction
+→ Risk Assessment
+→ Similar Case Retrieval
+→ RAG-Based Fraud Explanation
+
+Example:
+
+"Transaction of $3000 at 2AM from a new device in a foreign country"
+
+The system automatically estimates relevant fraud indicators, generates structured model inputs, evaluates fraud risk, and produces a grounded explanation of the prediction.
 
 | Step | Description |
 |------|-------------|
@@ -198,15 +228,18 @@ credit-card-fraud-detection/
 │
 ├── notebooks/
 │   ├── fraud.ipynb
-│   └── main.py
+│   └── main_experimental.py
 │
 ├── src/
 │   ├── __init__.py
+│   ├── explainer.py
 │   ├── knowledge_base.py
 │   └── rag_engine.py
 │
 ├── app.py
+├── main.py
 ├── Best_model.pkl
+├── Scaler.pkl
 ├── Dockerfile
 ├── Dockerfile.streamlit
 ├── requirements.txt
@@ -229,15 +262,17 @@ credit-card-fraud-detection/
 - Streamlit
 - Docker
 - Hugging Face Spaces
+- Render
 - Sentence Transformers
 - FAISS / vector retrieval workflow
+- Semantic Vector Retrieval
 - Groq API
-- LLaMA 3.3 70B
+- LLaMA 3.1 8B
 
 ## Deployment
 
 - **Frontend**: Streamlit app deployed on Hugging Face Spaces (`fraud-detection-ui`)
-- **Backend**: FastAPI REST API deployed separately (`fraud-detection-api`)
+- **Backend**: FastAPI REST API deployed on Render (`fraud-detection-api`)
 - **UI deployment**: Streamlit SDK with `app.py` as the entry point
 - **API deployment**: Docker-based FastAPI container
 - API returns:
