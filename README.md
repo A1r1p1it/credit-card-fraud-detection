@@ -294,7 +294,7 @@ credit-card-fraud-detection/
 
 ## Future Improvements
 
-- Replace in-memory retrieval with a persistent FAISS index
+- Replace in-memory semantic retrieval with a persistent vector index (e.g., FAISS)
 - Add SHAP-based local explanations beside RAG explanations
 - Add transaction history context for sequence-aware fraud analysis
 - Introduce analyst feedback loops for continuous knowledge base refinement
