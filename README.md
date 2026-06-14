@@ -264,7 +264,6 @@ credit-card-fraud-detection/
 - Hugging Face Spaces
 - Render
 - Sentence Transformers
-- FAISS / vector retrieval workflow
 - Semantic Vector Retrieval
 - Groq API
 - LLaMA 3.1 8B
